@@ -51,10 +51,6 @@ It is better described as:
 
 “A way to view a portfolio without buying it with cash first to visualize how it would have performed over time.”
 
-Why Alpaca?
-
-The goal wasn’t necessarily to replace Robinhood.
-
 The goal was to find a reliable way to recreate the portfolio and calculate performance without depending on an unofficial or unreliable Robinhood connection.
 
 After experimenting with:
