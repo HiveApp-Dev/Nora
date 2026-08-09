@@ -14,7 +14,7 @@ How Nora Works
 
 Nora takes a portfolio and essentially recreates it inside an Alpaca paper account, allowing the portfolio to be tracked without using real money.
 
-The dashboard then uses the simulated portfolio’s historical performance to generate a calendar-style P&L view.
+The dashboard then uses the portfolio’s historical performance to generate a calendar-style P&L view.
 
 Your Portfolio
       ↓
