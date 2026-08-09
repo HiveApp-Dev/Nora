@@ -45,7 +45,7 @@ What It Isn’t
 
 Nora is not a live Robinhood P&L tracker.
 
-The results are based on a simulated portfolio and should not be interpreted as the exact real-time performance of an actual Robinhood account.
+The results are based on owning the same portfolio as you would in robinhood.
 
 It is better described as:
 
