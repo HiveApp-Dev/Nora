@@ -92,24 +92,3 @@ Nora can recreate the portfolio in a simulated environment and use the resulting
 
 The goal is to make portfolio performance easy to understand at a glance, rather than forcing users to analyze a long list of transactions or account statements.
 
-Disclaimer
-
-Nora is a simulation and backtesting project.
-
-It does not directly access or mirror a Robinhood account, and its P&L should not be considered an exact representation of a user’s real brokerage account.
-
-Paper-trading results can differ from real-world results due to factors such as execution prices, timing, fees, spreads, market conditions, and differences between simulated and actual portfolios.
-
-Project Goal
-
-Nora started as an attempt to solve a very specific problem:
-
-Robinhood doesn’t provide the P&L calendar I wanted, and directly connecting to the account wasn’t giving me a reliable path.
-
-Rather than stop there, Nora became a different solution:
-
-Recreate the portfolio → simulate it → track the performance → turn it into a calendar.
-
-That’s what Nora is.
-
-A P&L calendar for portfolios that don’t have one.
