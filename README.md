@@ -43,7 +43,7 @@ What It Is
 
 What It Isn’t
 
-Nora is not a live Robinhood P&L tracker.
+Nora is based in alpaca you can also use live alapaca trading if you do choose so but i made this enviorment to test robinhood portfolios through alpaca.
 
 The results are based on owning the same portfolio as you would in robinhood.
 
