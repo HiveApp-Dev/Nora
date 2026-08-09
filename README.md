@@ -33,10 +33,10 @@ This makes Nora less of a traditional live portfolio tracker and more of a portf
 What It Is
 
 * Portfolio P&L calendar
-* Historical performance tracker
+* Historical performance tool
 * Stock portfolio backtesting tool
-* Crypto portfolio tracking concept
-* Alpaca paper-trading simulation
+* Crypto portfolio backtesting tool
+* Alpaca paper/live trading 
 * Daily profit/loss visualization
 * Portfolio performance dashboard
 * Alternative to manually calculating historical P&L
@@ -49,7 +49,7 @@ The results are based on owning the same portfolio as you would in robinhood.
 
 It is better described as:
 
-“A way to simulate a portfolio and visualize how it would have performed over time.”
+“A way to view a portfolio without buying it with cash first to visualize how it would have performed over time.”
 
 Why Alpaca?
 
