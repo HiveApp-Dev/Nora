@@ -2,7 +2,7 @@ Nora
 
 Portfolio P&L Calendar & Backtesting Dashboard
 
-Nora is a Python-based portfolio simulation and P&L calendar designed to answer a simple question:
+Nora is a backtesting tool for robinhood designed to answer a simple question:
 
 “If I held this portfolio, how would it have performed over time?”
 
