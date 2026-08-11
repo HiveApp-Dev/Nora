@@ -1,0 +1,1422 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0b0c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Nora">
+  <title>Nora — PnL Calendar</title>
+  <style>
+    :root {
+      --bg: #0a0b0c;
+      --panel: rgba(24, 25, 27, .42);
+      --panel-2: rgba(17, 18, 20, .66);
+      --border: rgba(255, 255, 255, .14);
+      --text: #e7e9ee;
+      --muted: #a0a4aa;
+      --green: #22c55e;
+      --green-bg: rgba(34, 197, 94, .17);
+      --red: #f05252;
+      --red-bg: rgba(240, 82, 82, .17);
+      --accent: #24272b;
+      --overlay: .72;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+      background: var(--bg);
+    }
+    body {
+      margin: 0;
+      padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+        0 max(8px, env(safe-area-inset-left));
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100svh;
+      min-height: 100dvh;
+      touch-action: manipulation;
+    }
+    button, input, textarea { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+
+    #bgLayer, #bgOverlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+    #bgLayer {
+      z-index: 0;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+    #bgVideoLayer {
+      position: fixed;
+      z-index: 0;
+      inset: 0;
+      display: none;
+      overflow: hidden;
+      background: #000;
+      pointer-events: none;
+    }
+    #bgVideoLayer iframe {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100vw;
+      height: 56.25vw;
+      min-width: 177.78vh;
+      min-height: 100vh;
+      border: 0;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    #bgOverlay {
+      z-index: 1;
+      background: rgba(10, 11, 16, var(--overlay));
+      transition: background .2s ease;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 2;
+      width: min(780px, 100%);
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+    .sub { margin-top: 2px; color: var(--muted); font-size: 10px; }
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 3px;
+      flex-wrap: wrap;
+    }
+    .nav button, .icon-btn, .modal button {
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      background: var(--panel-2);
+      padding: 5px 7px;
+      cursor: pointer;
+      -webkit-backdrop-filter: blur(18px) saturate(120%);
+      backdrop-filter: blur(18px) saturate(120%);
+      transition: transform .12s ease, background .15s ease, border-color .15s ease;
+    }
+    .nav button:active, .icon-btn:active, .modal button:active { transform: scale(.96); }
+    .nav button:hover, .icon-btn:hover, .modal button:hover {
+      background: #111315;
+      border-color: var(--accent);
+    }
+    .icon-btn.spinning { animation: nora-spin .8s linear infinite; }
+    @keyframes nora-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    #liveTicker { display: flex; align-items: center; gap: 5px; font-weight: 700; }
+    #liveTicker .live-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: nora-pulse 1.6s ease-in-out infinite;
+    }
+    #liveTicker .live-dot.pos { background: var(--green); }
+    #liveTicker .live-dot.neg { background: var(--red); }
+    @keyframes nora-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+    .month-label {
+      min-width: 112px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 5px;
+      margin-bottom: 8px;
+    }
+    .card {
+      min-width: 0;
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      -webkit-backdrop-filter: blur(18px) saturate(120%);
+      backdrop-filter: blur(18px) saturate(120%);
+    }
+    .card .label {
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .04em;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .card .value { margin-top: 2px; font-size: 14px; font-weight: 750; }
+    .pos { color: var(--green) !important; }
+    .neg { color: var(--red) !important; }
+    .flat { color: var(--muted) !important; }
+    .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    .dow {
+      padding-bottom: 2px;
+      color: var(--muted);
+      font-size: 9px;
+      text-align: center;
+    }
+    .day {
+      position: relative;
+      display: flex;
+      min-height: 48px;
+      padding: 5px;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--panel);
+      cursor: pointer;
+      -webkit-backdrop-filter: blur(18px) saturate(120%);
+      backdrop-filter: blur(18px) saturate(120%);
+      transition: transform .12s ease, border-color .15s ease;
+    }
+    .day:active { transform: scale(.97); }
+    .day:hover { border-color: var(--accent); }
+    .day.empty { border-color: transparent; background: transparent; cursor: default; }
+    .day.empty:active { transform: none; }
+    .day .num { color: var(--muted); font-size: 10px; }
+    .day.today .num { color: var(--accent); font-weight: 800; }
+    .day .pnl { align-self: flex-end; font-size: 10px; font-weight: 750; line-height: 1.1; }
+    .day.win { border-color: rgba(34, 197, 94, .4); background: var(--green-bg); }
+    .day.loss { border-color: rgba(240, 82, 82, .4); background: var(--red-bg); }
+    .day.filled::after {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--muted);
+      content: "";
+      opacity: .65;
+    }
+    footer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+    }
+    footer strong { color: var(--text); font-weight: 600; }
+
+    .modal-backdrop {
+      position: fixed;
+      z-index: 10;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, .68);
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(410px, 100%);
+      max-height: min(86svh, 700px);
+      overflow-y: auto;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: rgba(17, 18, 20, .58);
+      -webkit-backdrop-filter: blur(22px) saturate(125%);
+      backdrop-filter: blur(22px) saturate(125%);
+      box-shadow: 0 20px 80px rgba(0, 0, 0, .45);
+    }
+    .modal h2, .modal h3 { margin: 0 0 4px; font-size: 15px; }
+    .modal .src, .help {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .modal input[type="url"], .modal input[type="text"], .modal textarea {
+      width: 100%;
+      margin: 0 0 8px;
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      outline: none;
+      color: var(--text);
+      background: var(--bg);
+      font-size: 12px;
+    }
+    .modal input[type="password"], .modal select {
+      width: 100%;
+      margin: 0 0 8px;
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      outline: none;
+      color: var(--text);
+      background: var(--bg);
+      font-size: 12px;
+    }
+    .modal select { appearance: auto; }
+    .modal textarea { min-height: 130px; resize: vertical; line-height: 1.4; }
+    .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--accent); }
+    .field-label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .row { display: flex; gap: 6px; margin-top: 6px; }
+    .row > * { flex: 1; }
+    .modal button { width: 100%; padding: 7px 8px; font-size: 12px; }
+    .modal button.primary { border-color: #41454a; color: white; background: #1b1d20; }
+    .modal button.danger { border-color: var(--red); color: var(--red); background: transparent; }
+    .modal button.secondary { background: rgba(255, 255, 255, .05); }
+    .modal input[type="range"] { width: 100%; margin: 0 0 8px; accent-color: #777b80; }
+    .status {
+      min-height: 18px;
+      margin: 2px 0 8px;
+      color: var(--green);
+      font-size: 12px;
+    }
+    .status.error { color: var(--red); }
+    .security-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+    .modal-divider {
+      margin: 12px 0;
+      border: 0;
+      border-top: 1px solid var(--border);
+    }
+    .acct-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 2px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .acct-row:last-child { border-bottom: 0; }
+    .acct-row input { width: 15px; height: 15px; accent-color: #777b80; }
+    .acct-row label { flex: 1; cursor: pointer; }
+    .acct-row .remove-account {
+      flex: 0 0 auto;
+      width: auto;
+      padding: 5px 8px;
+      color: var(--red);
+      font-size: 11px;
+    }
+    .day-pnl-line { margin: 4px 0 10px; font-size: 21px; font-weight: 800; }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .detail-row:last-child { border-bottom: 0; }
+    .empty-state { padding: 6px 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .source-pill {
+      display: inline-block;
+      margin: 2px 0 9px;
+      padding: 3px 7px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .wrap { transform: translateY(132px); }
+      header { align-items: flex-start; }
+      header > .nav { width: 100%; justify-content: space-between; }
+      .nav button, .icon-btn { padding: 5px 6px; font-size: 11px; }
+      .month-label { min-width: 0; flex: 1; font-size: 11px; }
+    }
+    @media (max-width: 480px) {
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+      .card { padding: 6px 7px; }
+      .card .value { font-size: 13px; }
+      .grid { gap: 3px; }
+      .dow { font-size: 8px; }
+      .day { min-height: 43px; padding: 4px; border-radius: 6px; }
+      .day .num, .day .pnl { font-size: 9px; }
+      .day.filled::after { top: 3px; right: 3px; width: 4px; height: 4px; }
+    }
+    @media (max-width: 360px) {
+      .nav button, .icon-btn { padding: 4px 5px; font-size: 10px; }
+      .day { min-height: 38px; }
+      .day .num, .day .pnl { font-size: 8px; }
+    }
+    @media (orientation: landscape) and (max-height: 500px) {
+      body {
+        padding-top: max(5px, env(safe-area-inset-top));
+        padding-bottom: 0;
+      }
+      header {
+        align-items: center;
+        margin-bottom: 5px;
+        flex-wrap: nowrap;
+      }
+      header > .nav {
+        width: auto;
+        flex: 1;
+        justify-content: flex-end;
+      }
+      h1 { font-size: 14px; }
+      .sub { font-size: 9px; }
+      .summary { gap: 4px; margin-bottom: 5px; }
+      .card { padding: 4px 6px; }
+      .card .label { font-size: 8px; }
+      .card .value { font-size: 12px; }
+      .grid { gap: 2px; }
+      .dow { font-size: 8px; padding-bottom: 1px; }
+      .day { min-height: 31px; padding: 3px; border-radius: 5px; }
+      .day .num, .day .pnl { font-size: 8px; }
+      footer { display: none; }
+    }
+    @media (orientation: landscape) and (min-height: 501px) {
+      header {
+        margin-bottom: 7px;
+        flex-wrap: nowrap;
+      }
+      header > .nav { flex: 1; }
+      .summary { margin-bottom: 7px; }
+      .day { min-height: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="bgLayer"></div>
+  <div id="bgVideoLayer"><div id="ytPlayer"></div></div>
+  <div id="bgOverlay"></div>
+
+  <main class="wrap">
+    <header>
+      <div>
+        <h1>Nora</h1>
+        <div class="sub" id="sourceLabel">Not connected</div>
+        <div class="sub" id="liveTicker" style="display:none;"></div>
+        <div class="sub" id="syncStatus"></div>
+      </div>
+      <nav class="nav" aria-label="Calendar navigation">
+        <button id="prevBtn" aria-label="Previous month">←</button>
+        <div class="month-label" id="monthLabel"></div>
+        <button id="nextBtn" aria-label="Next month">→</button>
+        <button id="todayBtn">Today</button>
+        <button class="icon-btn" id="syncBtn" title="Sync Alpaca" aria-label="Sync Alpaca">↻</button>
+        <button class="icon-btn" id="bgSoundBtn" title="Enable audio" aria-label="Enable audio" style="display:none">Enable audio</button>
+        <button class="icon-btn" id="accountsBtn" title="Accounts" aria-label="Accounts">♙</button>
+        <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
+      </nav>
+    </header>
+
+    <section class="summary" aria-label="Monthly summary">
+      <div class="card"><div class="label">Portfolio Value</div><div class="value" id="portfolioValue">$0.00</div></div>
+      <div class="card"><div class="label">Win Days</div><div class="value" id="winDays">0</div></div>
+      <div class="card"><div class="label">Loss Days</div><div class="value" id="lossDays">0</div></div>
+      <div class="card"><div class="label">Win Rate</div><div class="value" id="winRate">0%</div></div>
+    </section>
+
+    <div class="grid" id="dowRow"></div>
+    <div class="grid" id="calendarGrid" style="margin-top:6px;"></div>
+  </main>
+
+  <div class="modal-backdrop" id="dayModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="dayModalDate">
+      <h3 id="dayModalDate"></h3>
+      <div class="day-pnl-line" id="dayModalPnl"></div>
+      <div id="dayModalDetail"></div>
+      <div class="row"><button id="dayModalClose" class="secondary">Close</button></div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="accountsModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="accountsTitle">
+      <h2 id="accountsTitle">Accounts</h2>
+      <p class="src">Choose which connected account histories count toward the calendar. Changes apply instantly.</p>
+      <div id="accountsList"></div>
+      <div class="row">
+        <button id="accountsAllBtn" class="secondary">Select all</button>
+        <button id="accountsDoneBtn" class="primary">Done</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="settingsModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">Settings</h2>
+      <p class="src">Add an Alpaca account to load its portfolio history. You can add more than one account below, then choose which ones count from the Accounts screen. Saved accounts auto-refresh in the background.</p>
+      <label class="field-label" for="alpacaEnvironmentInput">Alpaca environment</label>
+      <select id="alpacaEnvironmentInput">
+        <option value="paper">Paper trading</option>
+        <option value="live">Live trading</option>
+      </select>
+      <label class="field-label" for="alpacaKeyInput">API key ID</label>
+      <input type="text" id="alpacaKeyInput" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="PK... or live key ID">
+      <label class="field-label" for="accountNicknameInput">Account nickname</label>
+      <input type="text" id="accountNicknameInput" autocapitalize="words" autocomplete="off" maxlength="40" placeholder="e.g. Main account">
+      <label class="field-label" for="alpacaSecretInput">API secret key</label>
+      <input type="password" id="alpacaSecretInput" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="new-password" placeholder="Your Alpaca secret key">
+      <label class="field-label" for="alpacaPeriodInput">History range</label>
+      <select id="alpacaPeriodInput">
+        <option value="1M">1 month</option>
+        <option value="3M">3 months</option>
+        <option value="6M">6 months</option>
+        <option value="1A" selected>1 year</option>
+        <option value="all">All available</option>
+      </select>
+      <div class="status" id="connectionStatus" role="status"></div>
+      <div class="row">
+        <button id="disconnectBtn" class="danger">Disconnect all</button>
+        <button id="connectBtn" class="primary">Add &amp; sync</button>
+      </div>
+      <div class="security-note">Use a read-only, restricted Alpaca key where possible. Added accounts are saved in this browser's local storage on this device (so they can switch and auto-refresh without asking again), and are sent directly to Alpaca — only add accounts on a device you trust; a production proxy is safer for a public site.</div>
+      <hr class="modal-divider">
+      <h3>Connected accounts</h3>
+      <p class="src">Remove a saved account and its stored credentials here.</p>
+      <div id="settingsAccountsList"></div>
+      <hr class="modal-divider">
+      <p class="src">Background settings are saved only in this browser on this device.</p>
+      <label class="field-label" for="bgUrlInput">Background image or GIF URL</label>
+      <input type="url" id="bgUrlInput" placeholder="https://example.com/background.jpg">
+      <label class="field-label" for="bgYoutubeInput">YouTube background video URL</label>
+      <input type="url" id="bgYoutubeInput" placeholder="https://www.youtube.com/watch?v=VIDEO_ID">
+      <p class="help">YouTube backgrounds start muted for iOS autoplay rules. After the video appears, tap <strong>Enable audio</strong> in the toolbar.</p>
+      <label class="field-label" for="bgDimInput">Overlay darkness</label>
+      <input type="range" id="bgDimInput" min="0" max="95" value="72">
+      <div class="row">
+        <button id="bgClearBtn" class="danger">Clear background</button>
+        <button id="settingsSaveBtn" class="primary">Save</button>
+      </div>
+      <div class="row"><button id="settingsCancelBtn" class="secondary">Cancel</button></div>
+    </section>
+  </div>
+
+  <script src="https://www.youtube.com/iframe_api" async></script>
+  <script>
+    "use strict";
+
+    const SETTINGS_KEY = "nora_ios_settings_v1";
+    const ACCOUNTS_KEY = "nora_ios_accounts_v1";
+    const DATA_KEY = "nora_ios_data_v1";
+    const CREDS_KEY = "nora_ios_creds_v1";
+    const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+    const LIVE_INTERVAL_MS = 20 * 1000;
+    const DOWS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const ALPACA_URLS = {
+      paper: "https://paper-api.alpaca.markets",
+      live: "https://api.alpaca.markets"
+    };
+    const $ = (id) => document.getElementById(id);
+
+    let settings = readStorage(SETTINGS_KEY, { dim: 72 });
+    let portfolio = readStorage(DATA_KEY, null);
+    let isSyncing = false;
+    let isAutoSyncing = false;
+    let lastSyncedAt = null;
+    let lastLiveEntry = null;
+    let ytApiReady = false;
+    let ytPlayer = null;
+    let pendingYoutubeId = null;
+    let youtubeSoundOn = false;
+    let selectedAccountIds = [];
+    let viewDate = new Date();
+    viewDate.setDate(1);
+    let data = {};
+
+    function readStorage(key, fallback) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key) || "null");
+        return value === null ? fallback : value;
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    function writeStorage(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+    }
+
+    function loadCredentials() { return readStorage(CREDS_KEY, []); }
+    function saveCredentials(list) { writeStorage(CREDS_KEY, list); }
+    function upsertCredential(cred) {
+      const list = loadCredentials().filter((item) => item.id !== cred.id);
+      list.push(cred);
+      saveCredentials(list);
+    }
+    function removeCredential(id) {
+      saveCredentials(loadCredentials().filter((item) => item.id !== id));
+    }
+
+    function dateKey(year, month, day) {
+      return year + "-" + String(month + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+    }
+
+    function todayKeyStr() {
+      const now = new Date();
+      return dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+
+    function isoDate(value) {
+      if (typeof value === "number") {
+        const timestamp = value > 100000000000 ? value : value * 1000;
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit"
+        }).formatToParts(new Date(timestamp));
+        const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+        return map.year + "-" + map.month + "-" + map.day;
+      }
+      const text = String(value || "").trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+      const parsed = new Date(text);
+      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+    }
+
+    function numeric(value) {
+      if (value === null || value === undefined || value === "") return null;
+      const number = Number(String(value).replace(/[$,%\s,]/g, ""));
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function seriesFromHistory(input) {
+      const timestamps = input.timestamp || [];
+      const equities = input.equity || [];
+      const series = {};
+      timestamps.forEach((stamp, index) => {
+        const date = isoDate(stamp);
+        const value = numeric(equities[index]);
+        if (date && value !== null) series[date] = value;
+      });
+      const base = numeric(input.base_value);
+      if (base !== null && Object.keys(series).length) {
+        const first = Object.keys(series).sort()[0];
+        const prior = new Date(first + "T00:00:00");
+        prior.setDate(prior.getDate() - 1);
+        const priorKey = dateKey(prior.getFullYear(), prior.getMonth(), prior.getDate());
+        if (series[priorKey] === undefined) series[priorKey] = base;
+      }
+      if (!Object.keys(series).length) {
+        throw new Error("Alpaca returned no portfolio history for this account and range.");
+      }
+      return series;
+    }
+
+    function ensurePortfolio() {
+      if (!portfolio || !portfolio.accounts || !portfolio.raw) {
+        portfolio = { accounts: [], raw: {}, startDate: null, endDate: null, source: "Not connected" };
+      }
+    }
+
+    function mergeAccountIntoPortfolio(accountEntry, series) {
+      ensurePortfolio();
+      portfolio.accounts = portfolio.accounts.filter((item) => item.id !== accountEntry.id).concat(accountEntry);
+      portfolio.raw[accountEntry.id] = series;
+      portfolio.endDate = new Date().toISOString().slice(0, 10);
+      portfolio.source = accountEntry.label;
+      writeStorage(DATA_KEY, portfolio);
+      if (!selectedAccountIds.includes(accountEntry.id)) selectedAccountIds = selectedAccountIds.concat(accountEntry.id);
+      writeStorage(ACCOUNTS_KEY, selectedAccountIds);
+    }
+
+    async function refreshAccount(cred) {
+      const history = await alpacaGet("/v2/account/portfolio/history", {
+        period: cred.period || "1A",
+        timeframe: "1D",
+        extended_hours: "false"
+      }, cred);
+      const series = seriesFromHistory(history);
+      ensurePortfolio();
+      portfolio.raw[cred.id] = series;
+      if (!portfolio.accounts.some((item) => item.id === cred.id)) {
+        portfolio.accounts.push({
+          id: cred.id,
+          label: cred.nickname || "Connected account",
+          nickname: cred.nickname || "",
+          fallbackName: cred.nickname || "Connected account"
+        });
+        if (!selectedAccountIds.includes(cred.id)) selectedAccountIds.push(cred.id);
+      }
+    }
+
+    async function syncAllAccounts(options) {
+      const silent = !!(options && options.silent);
+      const creds = loadCredentials();
+      if (!creds.length || isAutoSyncing) return;
+      isAutoSyncing = true;
+      if (!silent) {
+        $("syncBtn").classList.add("spinning");
+        $("syncStatus").textContent = "Syncing…";
+      }
+      let errorCount = 0;
+      for (const cred of creds) {
+        try {
+          await refreshAccount(cred);
+        } catch (_) {
+          errorCount += 1;
+        }
+      }
+      ensurePortfolio();
+      portfolio.endDate = new Date().toISOString().slice(0, 10);
+      writeStorage(DATA_KEY, portfolio);
+      const allIds = portfolio.accounts.map((account) => account.id);
+      selectedAccountIds = selectedAccountIds.filter((id) => allIds.includes(id));
+      if (!selectedAccountIds.length && allIds.length) selectedAccountIds = allIds.slice();
+      writeStorage(ACCOUNTS_KEY, selectedAccountIds);
+      data = recompute();
+      render();
+      updateSourceLabel();
+      renderAccounts();
+      renderSettingsAccounts();
+      lastSyncedAt = new Date();
+      isAutoSyncing = false;
+      if (!silent) $("syncBtn").classList.remove("spinning");
+      updateSyncStatusLabel(errorCount);
+    }
+
+    function updateSyncStatusLabel(errorCount) {
+      if (!loadCredentials().length) {
+        $("syncStatus").textContent = "";
+        return;
+      }
+      const time = lastSyncedAt
+        ? lastSyncedAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+        : null;
+      if (errorCount) {
+        $("syncStatus").textContent = time
+          ? "Last synced " + time + " · " + errorCount + " account" + (errorCount > 1 ? "s" : "") + " failed"
+          : "Sync failed";
+      } else {
+        $("syncStatus").textContent = time ? "Auto-syncs · last synced " + time : "";
+      }
+    }
+
+    function baselineTotalBeforeToday() {
+      const merged = mergeAccountHistories(portfolio.raw, selectedAccountIds);
+      const key = todayKeyStr();
+      const priorDates = Object.keys(merged).filter((date) => date < key).sort();
+      if (!priorDates.length) return null;
+      return merged[priorDates[priorDates.length - 1]];
+    }
+
+    function isViewingToday() {
+      const today = new Date();
+      return viewDate.getFullYear() === today.getFullYear() && viewDate.getMonth() === today.getMonth();
+    }
+
+    function getLatestPortfolioValue() {
+      if (lastLiveEntry) return lastLiveEntry.value;
+      const keys = Object.keys(data).sort();
+      if (!keys.length) return null;
+      return data[keys[keys.length - 1]].value;
+    }
+
+    function updatePortfolioValueCard() {
+      const value = getLatestPortfolioValue();
+      $("portfolioValue").textContent = value !== null ? money(value) : "$0.00";
+    }
+
+    function hideLiveTicker() {
+      $("liveTicker").style.display = "none";
+      $("liveTicker").innerHTML = "";
+      lastLiveEntry = null;
+      if (isViewingToday()) render();
+      else updatePortfolioValueCard();
+    }
+
+    function showLiveTicker(entry) {
+      const dotClass = entry.pct > 0 ? "pos" : entry.pct < 0 ? "neg" : "";
+      const el = $("liveTicker");
+      el.style.display = "flex";
+      el.innerHTML = "<span class=\"live-dot " + dotClass + "\"></span>Today " + money(entry.change) + " (" + percent(entry.pct) + ")";
+      el.className = "sub " + (entry.pct > 0 ? "pos" : entry.pct < 0 ? "neg" : "flat");
+    }
+
+    async function refreshLiveTicker() {
+      if (document.visibilityState !== "visible") return;
+      const creds = loadCredentials();
+      const activeCreds = creds.filter((cred) => selectedAccountIds.includes(cred.id));
+      if (!activeCreds.length) { hideLiveTicker(); return; }
+      const baseline = baselineTotalBeforeToday();
+      if (baseline === null) { hideLiveTicker(); return; }
+      let total = 0;
+      let ok = 0;
+      for (const cred of activeCreds) {
+        try {
+          const account = await alpacaGet("/v2/account", {}, cred);
+          const equity = numeric(account.equity);
+          if (equity !== null) { total += equity; ok += 1; }
+        } catch (_) {}
+      }
+      if (!ok) return;
+      const change = total - baseline;
+      const pct = baseline ? change / baseline * 100 : 0;
+      lastLiveEntry = {
+        value: Math.round(total * 100) / 100,
+        change: Math.round(change * 100) / 100,
+        pct: Math.round(pct * 100) / 100,
+        filled_from: null,
+        asOf: new Date()
+      };
+      showLiveTicker(lastLiveEntry);
+      if (isViewingToday()) render();
+      else updatePortfolioValueCard();
+    }
+
+    async function alpacaGet(path, params, credentials) {
+      const baseUrl = ALPACA_URLS[credentials.environment];
+      const query = new URLSearchParams(params || {});
+      const response = await fetch(baseUrl + path + (query.toString() ? "?" + query : ""), {
+        method: "GET",
+        headers: {
+          "APCA-API-KEY-ID": credentials.keyId,
+          "APCA-API-SECRET-KEY": credentials.secretKey,
+          "Accept": "application/json"
+        },
+        cache: "no-store"
+      });
+      let body = null;
+      try { body = await response.json(); } catch (_) {}
+      if (!response.ok) {
+        const message = body && (body.message || body.error) ? (body.message || body.error) : "Alpaca returned HTTP " + response.status + ".";
+        throw new Error(message);
+      }
+      return body;
+    }
+
+    async function connectAlpaca() {
+      if (isSyncing) return;
+      const keyId = $("alpacaKeyInput").value.trim();
+      const secretKey = $("alpacaSecretInput").value.trim();
+      const environment = $("alpacaEnvironmentInput").value;
+      const period = $("alpacaPeriodInput").value;
+      const nickname = $("accountNicknameInput").value.trim();
+      if (!keyId || !secretKey) {
+        showConnectionStatus("Enter both the API key ID and API secret key.", true);
+        return;
+      }
+      isSyncing = true;
+      $("connectBtn").disabled = true;
+      $("connectBtn").textContent = "Connecting…";
+      showConnectionStatus("Verifying your Alpaca account…", false);
+      const credentials = { keyId, secretKey, environment };
+      try {
+        const account = await alpacaGet("/v2/account", {}, credentials);
+        showConnectionStatus("Account verified. Loading portfolio history…", false);
+        const history = await alpacaGet("/v2/account/portfolio/history", {
+          period,
+          timeframe: "1D",
+          extended_hours: "false"
+        }, credentials);
+        const series = seriesFromHistory(history);
+        const accountId = account.id || account.account_number || "alpaca-" + environment + "-" + Date.now();
+        const fallbackName = account.account_number || account.id || "Alpaca account";
+        const displayName = nickname || fallbackName;
+        mergeAccountIntoPortfolio({ id: accountId, label: displayName, nickname: nickname || "", fallbackName }, series);
+        upsertCredential({ id: accountId, keyId, secretKey, environment, period, nickname });
+        settings.environment = environment;
+        settings.period = period;
+        settings.accountNickname = nickname;
+        writeStorage(SETTINGS_KEY, settings);
+        data = recompute();
+        updateSourceLabel();
+        render();
+        renderAccounts();
+        renderSettingsAccounts();
+        lastSyncedAt = new Date();
+        updateSyncStatusLabel(0);
+        restartAutoSync();
+        restartLiveSync();
+        $("alpacaSecretInput").value = "";
+        $("alpacaKeyInput").value = "";
+        $("accountNicknameInput").value = "";
+        showConnectionStatus("Connected and synced successfully.", false);
+        setTimeout(() => closeModal("settingsModalBackdrop"), 450);
+      } catch (error) {
+        const detail = error && error.message ? error.message : "Could not connect to Alpaca.";
+        const corsHint = detail === "Failed to fetch"
+          ? " The browser could not reach Alpaca—check the hosted site's HTTPS/CORS setup."
+          : "";
+        showConnectionStatus(detail + corsHint, true);
+      } finally {
+        isSyncing = false;
+        $("connectBtn").disabled = false;
+        $("connectBtn").textContent = "Connect & sync";
+      }
+    }
+
+    function extractYoutubeId(url) {
+      if (!url) return null;
+      try {
+        const parsed = new URL(url.trim());
+        const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+        if (host === "youtu.be") return parsed.pathname.slice(1).split("/")[0] || null;
+        if (["youtube.com", "m.youtube.com", "music.youtube.com"].includes(host)) {
+          if (parsed.searchParams.get("v")) return parsed.searchParams.get("v");
+          const embed = parsed.pathname.match(/\/embed\/([^/?]+)/);
+          const shorts = parsed.pathname.match(/\/shorts\/([^/?]+)/);
+          const live = parsed.pathname.match(/\/live\/([^/?]+)/);
+          return (embed || shorts || live)?.[1] || null;
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    function updateSoundButton() {
+      const button = $("bgSoundBtn");
+      button.textContent = youtubeSoundOn ? "Mute audio" : "Enable audio";
+      button.title = youtubeSoundOn ? "Mute background audio" : "Enable background audio";
+      button.setAttribute("aria-label", button.title);
+    }
+
+    function createYoutubePlayer(videoId) {
+      $("bgVideoLayer").style.display = "block";
+      $("bgSoundBtn").style.display = "";
+      youtubeSoundOn = false;
+      updateSoundButton();
+      if (ytPlayer && typeof ytPlayer.loadVideoById === "function") {
+        ytPlayer.mute();
+        ytPlayer.loadVideoById(videoId);
+        return;
+      }
+      if (!window.YT || !YT.Player) {
+        pendingYoutubeId = videoId;
+        return;
+      }
+      ytPlayer = new YT.Player("ytPlayer", {
+        videoId,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          iv_load_policy: 3,
+          loop: 1,
+          modestbranding: 1,
+          mute: 1,
+          playsinline: 1,
+          playlist: videoId,
+          rel: 0
+        },
+        events: {
+          onReady: (event) => {
+            event.target.mute();
+            event.target.playVideo();
+          }
+        }
+      });
+    }
+
+    function destroyYoutubeBackground() {
+      $("bgVideoLayer").style.display = "none";
+      $("bgSoundBtn").style.display = "none";
+      youtubeSoundOn = false;
+      updateSoundButton();
+      if (ytPlayer && typeof ytPlayer.stopVideo === "function") {
+        try { ytPlayer.stopVideo(); } catch (_) {}
+      }
+    }
+
+    function applyYoutubeBackground(videoId) {
+      if (ytApiReady && window.YT && YT.Player) {
+        createYoutubePlayer(videoId);
+      } else {
+        pendingYoutubeId = videoId;
+      }
+    }
+
+    window.onYouTubeIframeAPIReady = function () {
+      ytApiReady = true;
+      if (pendingYoutubeId) {
+        createYoutubePlayer(pendingYoutubeId);
+        pendingYoutubeId = null;
+      }
+    };
+
+    $("bgSoundBtn").addEventListener("click", () => {
+      if (!ytPlayer || typeof ytPlayer.unMute !== "function") return;
+      if (youtubeSoundOn) {
+        ytPlayer.mute();
+        youtubeSoundOn = false;
+      } else {
+        ytPlayer.unMute();
+        ytPlayer.setVolume(100);
+        ytPlayer.playVideo();
+        youtubeSoundOn = true;
+      }
+      updateSoundButton();
+    });
+
+    function mergeAccountHistories(raw, accountIds) {
+      const relevant = accountIds.filter((id) => raw[id]);
+      if (!relevant.length) return {};
+      const dates = new Set();
+      relevant.forEach((id) => Object.keys(raw[id]).forEach((date) => dates.add(date)));
+      const lastKnown = Object.fromEntries(relevant.map((id) => [id, null]));
+      const merged = {};
+      Array.from(dates).sort().forEach((date) => {
+        let total = 0;
+        let hasValue = false;
+        relevant.forEach((id) => {
+          if (raw[id][date] !== undefined) lastKnown[id] = raw[id][date];
+          if (lastKnown[id] !== null) {
+            total += lastKnown[id];
+            hasValue = true;
+          }
+        });
+        if (hasValue) merged[date] = total;
+      });
+      return merged;
+    }
+
+    function fillCalendarGaps(values, endBoundary) {
+      const dates = Object.keys(values).sort();
+      if (!dates.length) return { filled: {}, filledFrom: {} };
+      const start = new Date(dates[0] + "T00:00:00");
+      let end = new Date(dates[dates.length - 1] + "T00:00:00");
+      if (endBoundary) {
+        const boundary = new Date(endBoundary + "T00:00:00");
+        if (boundary > end) end = boundary;
+      }
+      const filled = {};
+      const filledFrom = {};
+      let lastValue = null;
+      let lastRealDate = null;
+      for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+        const key = dateKey(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+        if (values[key] !== undefined) {
+          lastValue = values[key];
+          lastRealDate = key;
+          filledFrom[key] = null;
+        } else {
+          filledFrom[key] = lastRealDate;
+        }
+        filled[key] = lastValue;
+      }
+      return { filled, filledFrom };
+    }
+
+    function computeDailyChange(values, startDate, endDate, filledFrom) {
+      const daily = {};
+      let previous = null;
+      Object.keys(values).sort().forEach((date) => {
+        const value = values[date];
+        if (previous !== null) {
+          const change = value - previous;
+          const pct = previous ? change / previous * 100 : 0;
+          const inRange = (!startDate || date >= startDate) && (!endDate || date <= endDate);
+          if (inRange) {
+            daily[date] = {
+              value: Math.round(value * 100) / 100,
+              change: Math.round(change * 100) / 100,
+              pct: Math.round(pct * 100) / 100,
+              filled_from: filledFrom[date] || null
+            };
+          }
+        }
+        previous = value;
+      });
+      return daily;
+    }
+
+    function recompute() {
+      if (!portfolio) return {};
+      const allIds = portfolio.accounts.map((account) => account.id);
+      const saved = readStorage(ACCOUNTS_KEY, null);
+      selectedAccountIds = Array.isArray(saved)
+        ? saved.filter((id) => allIds.includes(id))
+        : allIds.slice();
+      if (!selectedAccountIds.length && allIds.length) selectedAccountIds = allIds.slice();
+      const merged = mergeAccountHistories(portfolio.raw, selectedAccountIds);
+      const todayKey = todayKeyStr();
+      const gaps = fillCalendarGaps(merged, todayKey);
+      const effectiveEndDate = portfolio.endDate && portfolio.endDate > todayKey ? portfolio.endDate : todayKey;
+      return computeDailyChange(gaps.filled, portfolio.startDate, effectiveEndDate, gaps.filledFrom);
+    }
+
+    function money(value) {
+      const number = Number(value) || 0;
+      return (number < 0 ? "-" : "") + "$" + Math.abs(number).toLocaleString(undefined, {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+      });
+    }
+
+    function percent(value) {
+      const number = Number(value) || 0;
+      return (number >= 0 ? "+" : "") + number.toFixed(2) + "%";
+    }
+
+    function render() {
+      const year = viewDate.getFullYear();
+      const month = viewDate.getMonth();
+      $("monthLabel").textContent = viewDate.toLocaleString(undefined, { month: "long", year: "numeric" });
+      $("calendarGrid").innerHTML = "";
+      const firstDow = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+      for (let index = 0; index < firstDow; index += 1) {
+        const empty = document.createElement("div");
+        empty.className = "day empty";
+        $("calendarGrid").appendChild(empty);
+      }
+      let wins = 0;
+      let losses = 0;
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const key = dateKey(year, month, day);
+        const isToday = year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
+        const entry = isToday && lastLiveEntry ? lastLiveEntry : data[key];
+        const element = document.createElement("div");
+        element.className = "day";
+        if (isToday) element.classList.add("today");
+        if (entry && typeof entry.pct === "number") {
+          if (entry.filled_from) element.classList.add("filled");
+          else if (entry.pct > 0) { element.classList.add("win"); wins += 1; }
+          else if (entry.pct < 0) { element.classList.add("loss"); losses += 1; }
+          const pnl = document.createElement("div");
+          pnl.className = "pnl " + (entry.pct > 0 ? "pos" : entry.pct < 0 ? "neg" : "flat");
+          pnl.textContent = percent(entry.pct);
+          element.appendChild(pnl);
+        }
+        const number = document.createElement("div");
+        number.className = "num";
+        number.textContent = day;
+        element.insertBefore(number, element.firstChild);
+        element.addEventListener("click", () => openDayInfo(year, month, day, entry));
+        $("calendarGrid").appendChild(element);
+      }
+      updatePortfolioValueCard();
+      $("winDays").textContent = wins;
+      $("lossDays").textContent = losses;
+      $("winRate").textContent = (wins + losses ? Math.round(wins / (wins + losses) * 100) : 0) + "%";
+    }
+
+    function openDayInfo(year, month, day, entry) {
+      const key = dateKey(year, month, day);
+      const liveNote = key === todayKeyStr() && lastLiveEntry ? lastLiveEntry : null;
+      if (liveNote) entry = liveNote;
+      $("dayModalDate").textContent = new Date(year, month, day).toLocaleDateString(undefined, {
+        weekday: "long", month: "long", day: "numeric", year: "numeric"
+      });
+      $("dayModalDetail").innerHTML = "";
+      const pnl = $("dayModalPnl");
+      if (!entry) {
+        pnl.textContent = "No data";
+        pnl.className = "day-pnl-line flat";
+        const note = document.createElement("div");
+        note.className = "empty-state";
+        note.textContent = "No portfolio value was recorded for this day.";
+        $("dayModalDetail").appendChild(note);
+      } else {
+        pnl.textContent = entry.filled_from ? "No new sync" : percent(entry.pct);
+        pnl.className = "day-pnl-line " + (entry.filled_from ? "flat" : entry.pct >= 0 ? "pos" : "neg");
+        [["$ Change", money(entry.change), entry.change >= 0 ? "pos" : "neg"],
+          ["Portfolio Value", money(entry.value), ""]].forEach(([label, value, className]) => {
+          const row = document.createElement("div");
+          row.className = "detail-row";
+          row.innerHTML = "<span>" + label + "</span><span class=\"" + className + "\">" + value + "</span>";
+          $("dayModalDetail").appendChild(row);
+        });
+        if (liveNote) {
+          const note = document.createElement("div");
+          note.className = "empty-state";
+          note.textContent = "Live estimate as of " + liveNote.asOf.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" }) + ". Updates automatically until the next full sync.";
+          $("dayModalDetail").appendChild(note);
+        } else if (entry.filled_from) {
+          const note = document.createElement("div");
+          note.className = "empty-state";
+          note.textContent = "No account synced a fresh value on this day. The value was carried forward from " + entry.filled_from + ".";
+          $("dayModalDetail").appendChild(note);
+        }
+      }
+      openModal("dayModalBackdrop");
+    }
+
+    function openModal(id) { $(id).classList.add("open"); }
+    function closeModal(id) { $(id).classList.remove("open"); }
+
+    function accountDisplayName(account) {
+      return account.nickname
+        || (portfolio.accounts.length === 1 ? settings.accountNickname : "")
+        || "Connected account";
+    }
+
+    function updateSourceLabel() {
+      if (!portfolio.accounts?.length) {
+        $("sourceLabel").textContent = "Not connected";
+        return;
+      }
+      const name = accountDisplayName(portfolio.accounts[0]);
+      const extra = portfolio.accounts.length - 1;
+      $("sourceLabel").textContent = extra > 0 ? name + " +" + extra + " more" : name;
+    }
+
+    function renderAccounts() {
+      $("accountsList").innerHTML = "";
+      if (!portfolio.accounts.length) {
+        $("accountsList").innerHTML = "<div class=\"empty-state\">No connected accounts found.</div>";
+        return;
+      }
+      portfolio.accounts.forEach((account, index) => {
+        const row = document.createElement("div");
+        row.className = "acct-row";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.id = "account-" + index;
+        checkbox.checked = selectedAccountIds.includes(account.id);
+        checkbox.addEventListener("change", () => {
+          selectedAccountIds = checkbox.checked
+            ? Array.from(new Set(selectedAccountIds.concat(account.id)))
+            : selectedAccountIds.filter((id) => id !== account.id);
+          writeStorage(ACCOUNTS_KEY, selectedAccountIds);
+          data = recompute();
+          render();
+          refreshLiveTicker();
+        });
+        const label = document.createElement("label");
+        label.htmlFor = checkbox.id;
+        label.textContent = account.label;
+        row.append(checkbox, label);
+        $("accountsList").appendChild(row);
+      });
+    }
+
+    function renderSettingsAccounts() {
+      $("settingsAccountsList").innerHTML = "";
+      if (!portfolio.accounts.length) {
+        $("settingsAccountsList").innerHTML = "<div class=\"empty-state\">No connected accounts found.</div>";
+        return;
+      }
+      portfolio.accounts.forEach((account) => {
+        const row = document.createElement("div");
+        row.className = "acct-row";
+        const label = document.createElement("label");
+        label.textContent = accountDisplayName(account);
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "remove-account";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", () => {
+          if (!window.confirm("Remove " + accountDisplayName(account) + " and its saved history?")) return;
+          portfolio.accounts = portfolio.accounts.filter((item) => item.id !== account.id);
+          delete portfolio.raw[account.id];
+          selectedAccountIds = selectedAccountIds.filter((id) => id !== account.id);
+          removeCredential(account.id);
+          if (!portfolio.accounts.length) {
+            portfolio.source = "Not connected";
+            try { localStorage.removeItem(DATA_KEY); } catch (_) {}
+          } else {
+            writeStorage(DATA_KEY, portfolio);
+          }
+          writeStorage(ACCOUNTS_KEY, selectedAccountIds);
+          updateSyncStatusLabel(0);
+          restartLiveSync();
+          data = recompute();
+          updateSourceLabel();
+          render();
+          renderAccounts();
+          renderSettingsAccounts();
+          showConnectionStatus("Account removed.", false);
+        });
+        row.append(label, remove);
+        $("settingsAccountsList").appendChild(row);
+      });
+    }
+
+    function applyBackground() {
+      const dim = typeof settings.dim === "number" ? settings.dim : 72;
+      document.documentElement.style.setProperty("--overlay", dim / 100);
+      const youtubeId = extractYoutubeId(settings.ytUrl);
+      if (youtubeId) {
+        $("bgLayer").style.backgroundImage = "none";
+        applyYoutubeBackground(youtubeId);
+      } else {
+        destroyYoutubeBackground();
+        $("bgLayer").style.backgroundImage = settings.bgUrl
+          ? "url(\"" + settings.bgUrl.replace(/"/g, "%22") + "\")"
+          : "none";
+      }
+    }
+
+    function showConnectionStatus(message, isError) {
+      $("connectionStatus").textContent = message;
+      $("connectionStatus").className = "status" + (isError ? " error" : "");
+    }
+
+    DOWS.forEach((name) => {
+      const day = document.createElement("div");
+      day.className = "dow";
+      day.textContent = name;
+      $("dowRow").appendChild(day);
+    });
+
+    $("prevBtn").addEventListener("click", () => { viewDate.setMonth(viewDate.getMonth() - 1); render(); });
+    $("nextBtn").addEventListener("click", () => { viewDate.setMonth(viewDate.getMonth() + 1); render(); });
+    $("todayBtn").addEventListener("click", () => { viewDate = new Date(); viewDate.setDate(1); render(); });
+    $("syncBtn").addEventListener("click", () => {
+      if (loadCredentials().length) {
+        syncAllAccounts({ silent: false });
+      } else {
+        showConnectionStatus("", false);
+        openModal("settingsModalBackdrop");
+      }
+    });
+    $("accountsBtn").addEventListener("click", () => { renderAccounts(); openModal("accountsModalBackdrop"); });
+    $("accountsDoneBtn").addEventListener("click", () => closeModal("accountsModalBackdrop"));
+    $("accountsAllBtn").addEventListener("click", () => {
+      selectedAccountIds = portfolio.accounts.map((account) => account.id);
+      writeStorage(ACCOUNTS_KEY, selectedAccountIds);
+      data = recompute();
+      render();
+      renderAccounts();
+      refreshLiveTicker();
+    });
+    $("settingsBtn").addEventListener("click", () => {
+      $("bgUrlInput").value = settings.bgUrl || "";
+      $("bgYoutubeInput").value = settings.ytUrl || "";
+      $("bgDimInput").value = typeof settings.dim === "number" ? settings.dim : 72;
+      $("alpacaEnvironmentInput").value = settings.environment || "paper";
+      $("alpacaPeriodInput").value = settings.period || "1A";
+      $("alpacaKeyInput").value = "";
+      $("accountNicknameInput").value = "";
+      $("alpacaSecretInput").value = "";
+      showConnectionStatus(loadCredentials().length ? "Add another account below, or manage saved accounts." : "", false);
+      renderSettingsAccounts();
+      openModal("settingsModalBackdrop");
+    });
+    $("connectBtn").addEventListener("click", connectAlpaca);
+    $("disconnectBtn").addEventListener("click", () => {
+      if (!window.confirm("Remove all connected accounts and their saved credentials from this device?")) return;
+      portfolio = {
+        accounts: [],
+        raw: {},
+        startDate: null,
+        endDate: null,
+        source: "Not connected"
+      };
+      data = {};
+      selectedAccountIds = [];
+      saveCredentials([]);
+      try { localStorage.removeItem(DATA_KEY); } catch (_) {}
+      try { localStorage.removeItem(ACCOUNTS_KEY); } catch (_) {}
+      $("sourceLabel").textContent = "Not connected";
+      updateSyncStatusLabel(0);
+      restartLiveSync();
+      showConnectionStatus("All accounts disconnected and credentials cleared from this device.", false);
+      render();
+      renderAccounts();
+      renderSettingsAccounts();
+    });
+    $("settingsCancelBtn").addEventListener("click", () => closeModal("settingsModalBackdrop"));
+    $("settingsSaveBtn").addEventListener("click", () => {
+      const youtubeUrl = $("bgYoutubeInput").value.trim();
+      if (youtubeUrl && !extractYoutubeId(youtubeUrl)) {
+        showConnectionStatus("That does not look like a valid YouTube URL.", true);
+        return;
+      }
+      settings = {
+        ...settings,
+        bgUrl: $("bgUrlInput").value.trim(),
+        ytUrl: youtubeUrl,
+        dim: Number($("bgDimInput").value),
+        environment: $("alpacaEnvironmentInput").value,
+        period: $("alpacaPeriodInput").value
+      };
+      writeStorage(SETTINGS_KEY, settings);
+      applyBackground();
+      closeModal("settingsModalBackdrop");
+    });
+    $("bgClearBtn").addEventListener("click", () => {
+      settings = {
+        ...settings,
+        bgUrl: "",
+        ytUrl: "",
+        dim: Number($("bgDimInput").value)
+      };
+      writeStorage(SETTINGS_KEY, settings);
+      $("bgUrlInput").value = "";
+      $("bgYoutubeInput").value = "";
+      applyBackground();
+    });
+
+    document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+      backdrop.addEventListener("click", (event) => {
+        if (event.target === backdrop) closeModal(backdrop.id);
+      });
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      document.querySelectorAll(".modal-backdrop.open").forEach((modal) => closeModal(modal.id));
+    });
+
+    if (!portfolio || !portfolio.raw || !portfolio.accounts) {
+      portfolio = {
+        accounts: [],
+        raw: {},
+        startDate: null,
+        endDate: null,
+        source: "Not connected"
+      };
+    }
+    portfolio.accounts = portfolio.accounts.map((account) => ({
+      ...account,
+      nickname: account.nickname || (portfolio.accounts.length === 1 ? settings.accountNickname || "" : ""),
+      label: account.nickname || (portfolio.accounts.length === 1 ? settings.accountNickname || "" : "") || "Connected account"
+    }));
+    writeStorage(DATA_KEY, portfolio);
+    updateSourceLabel();
+    applyBackground();
+    data = recompute();
+    render();
+
+    let autoSyncTimer = null;
+    let liveSyncTimer = null;
+    function restartAutoSync() {
+      if (autoSyncTimer) clearInterval(autoSyncTimer);
+      autoSyncTimer = setInterval(() => syncAllAccounts({ silent: true }), REFRESH_INTERVAL_MS);
+    }
+    function restartLiveSync() {
+      if (liveSyncTimer) clearInterval(liveSyncTimer);
+      if (!loadCredentials().length) { hideLiveTicker(); return; }
+      refreshLiveTicker();
+      liveSyncTimer = setInterval(refreshLiveTicker, LIVE_INTERVAL_MS);
+    }
+    if (loadCredentials().length) {
+      syncAllAccounts({ silent: true });
+    }
+    restartAutoSync();
+    restartLiveSync();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      if (!loadCredentials().length) return;
+      if (!lastSyncedAt || Date.now() - lastSyncedAt.getTime() > 60000) {
+        syncAllAccounts({ silent: true });
+      }
+      refreshLiveTicker();
+    });
+  </script>
+</body>
+</html>
